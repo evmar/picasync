@@ -7,11 +7,11 @@ import (
 	"io"
 )
 
-func copyWithProgress(r io.Reader, w io.Writer, total int64) error {
+func copyWithProgress(text string, r io.Reader, w io.Writer, total int64) error {
 	defer fmt.Printf("\n")
 
 	var cur int64 = 0
-	buf := make([]byte, 32 << 10)
+	buf := make([]byte, 64 << 10)
 	for {
 		nr, err := r.Read(buf)
 		if err != nil {
@@ -26,18 +26,22 @@ func copyWithProgress(r io.Reader, w io.Writer, total int64) error {
 		}
 		cur += int64(nw)
 
-		frac := float32(cur + 1) / float32(total + 1)
 		fmt.Printf("\r\x1b[K")
-		fmt.Printf("%.1fk [", float32(cur) / 1000.0)
-		width := 40
-		for i := 0; i < width; i++ {
-			if i < int(float32(width) * frac) {
-				fmt.Printf("#")
-			} else {
-				fmt.Printf(" ")
+		fmt.Printf("%4dk ", cur / 1000)
+		if total >= 0 && cur < total {
+			fmt.Printf("[")
+			frac := float32(cur + 1) / float32(total + 1)
+			width := 10
+			for i := 0; i < width; i++ {
+				if i < int(float32(width) * frac) {
+					fmt.Printf("#")
+				} else {
+					fmt.Printf(" ")
+				}
 			}
+			fmt.Printf("] ")
 		}
-		fmt.Printf("]")
+		fmt.Printf("%s", text)
 	}
 	return nil
 }
@@ -69,7 +73,7 @@ func download(client *http.Client, url string, path string, etag string) error {
 		return err
 	}
 
-	err = copyWithProgress(resp.Body, f, resp.ContentLength)
+	err = copyWithProgress(path, resp.Body, f, resp.ContentLength)
 
 	f.Close()
 	if err != nil {
